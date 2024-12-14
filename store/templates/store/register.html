@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {{page_title}}
+{% endblock page_title %}
+
+{% block contents %}
+    <header class="bg-dark py-5">
+        <div class="container px-4 px-lg-5 my-5">
+            <div class="text-center text-white">
+                <h1 class="display-4 fw-bolder">{{page_title}}</h1>
+                <p class="lead fw-normal text-white-50 mb-0">Log In to Your Account...</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="row">
+                <br><br>
+                <div class="col-md-6 offset-md-3 my-5">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% for register in register_form %}
+                            <div class="mb-3">
+                                <label for="{{register.id_for_label}}" class="form-label">{{register.label}}</label>
+                                {{register}}
+                                {% if register.errors %}
+                                    <div class="text-danger">
+                                        {{ register.errors|join:", " }}
+                                    </div>  
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                            
+                        <button type="submit" class="btn btn-secondary">Submit</button>
+                    </form>
+                </div>
+                <br><br>
+        </div>
+    </div>
+{% endblock contents %}
+    

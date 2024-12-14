@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {{page_title}}
+{% endblock page_title %}
+
+{% block contents %}
+    <!-- Header-->
+    <header class="bg-dark py-5">
+        <div class="container px-4 px-lg-5 my-5">
+            <div class="text-center text-white">
+                <h1 class="display-4 fw-bolder">{{page_title}}</h1>
+                <p class="lead fw-normal text-white-50 mb-0">Review your Order....</p>
+            </div>
+        </div>
+    </header>
+    <div class="container">
+        <div class="row">
+            {% load humanize %}
+            <br><br>
+            <div class="col-md-6 offset-md-3 my-5">
+                <div class="card">
+                    <div class="card-header">
+                      Order Summary
+                    </div>
+                    <div class="card-body">
+                      
+                      {% for product in cart_products %}
+                        {{product.name}}:
+                        Rp. {{product.price|intcomma}}<br>
+                        
+                        <small>
+                            Quantity:     
+                                {% for key, value in quantities.items %}
+                                    
+                                    {% if key == product.id|slugify %}
+                                        {{ value }}
+                                    {% endif %}
+                                        
+                                {% endfor %}
+                        </small><br><br>
+
+                        {% endfor %}
+                        <h5 class="mb-5">Total: Rp. {{totals|intcomma}}</h5>
+                        <a href="{% url 'cart:cart_summary' %}" class="btn btn-warning">
+                            Update Items
+                        </a>
+                    </div>
+                </div>
+            
+                <div class="card mt-5">
+                    <div class="card-header">
+                        Shipping Info
+                    </div>
+                    <div class="card-body">
+                    <form method="post" action="{% url 'payment:billing_info' %}">
+                        {% csrf_token %}
+                        {% for user_shipping in shipping_form %}
+                            <div class="mb-3">
+                                <label for="{{user_shipping.id_for_label}}" class="form-label">{{user_shipping.label}}</label>
+                                {{user_shipping}}
+                                {% if user_shipping.errors %}
+                                    <div class="text-danger">
+                                        {{ user_shipping.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success mt-5">Continue to Billing</button>
+            </form>
+
+
+            </div>       
+        </div>
+    </div>
+{% endblock contents %}
+    
