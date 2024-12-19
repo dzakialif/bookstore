@@ -55,9 +55,8 @@
                     <div class="card-body">
                         <p class="card-text">Name: {{shipping_info.shipping_full_name}}</p>
                         <p class="card-text">Email: {{shipping_info.shipping_email}}</p>
-                        <p class="card-text">Address 1: {{shipping_info.shipping_address1}}</p>
-                        <p class="card-text">Address 2: {{shipping_info.shipping_address2}}</p>
-                        <p class="card-text">City : {{shipping_info.shipping_city}}</p>
+                        <p class="card-text">Address: {{shipping_info.shipping_address}}</p>
+                        <p class="card-text">City: {{shipping_info.shipping_city}}</p>
                         <p class="card-text">Zipcode: {{shipping_info.shipping_zipcode}}</p>
                         <a href="{% url 'payment:checkout' %}" class="btn btn-secondary">Update Shipping</a>
                     </div>
@@ -69,8 +68,19 @@
                     <div class="card-body">
                         <form method="post" action="{% url 'payment:process_order' %}">
                             {% csrf_token %}
-                            {{billing_form.as_p}}
-
+                            
+                            {% for billing in billing_form %}
+                                <label for="{{billing.id_for_label}}" class="form-label">{{billing.label}}</label>
+                                {{billing}}
+                                {% if billing_form.errors %}
+                                    <div class="text-danger mt-3">
+                                        {{ billing.errors|join:", " }}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                                
+                            
+                                
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success mt-5">Pay Now!</button>

@@ -9,7 +9,7 @@
         <div class="card mb-3">
             <div class="row g-0">
               <div class="col-md-4">
-                <img src="{{products.image.url}}" class="img-fluid rounded-start" alt="{{product.image}}">
+                <img src="{{products.image.url}}" class="img-fluid rounded-start" alt="{{products.image}}">
               </div>
               <div class="col-md-8">
                 <div class="card-body">
@@ -17,23 +17,39 @@
                         {% load humanize %}
                         <p class="card-text"><b>Price: Rp.{{products.price|intcomma}}</b></p>
                         <p class="card-text">{{products.description}}</p>
-                        <div class="row justify-content-center">
-                            <div class="col-md-2">
-                                Quantity
-                            </div>
-                            <div class="col-md-2">
-                                <select class="form-select" id="qty-cart">
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                </select>
-                            </div>
+                        <div class="row align-items-center">
+                          <div class="col-md-2">
+                              <label for="qty-cart" class="form-label">Quantity</label>
+                          </div>
+                          <div class="col-md-4 d-flex align-items-center">
+                              <!-- Tombol - -->
+                              <button class="btn btn-outline-secondary btn-qty" data-type="minus" id="btn-minus">-</button>
+                              <!-- Input read-only -->
+                              <input 
+                                  type="text" 
+                                  class="form-control mx-2 text-center" 
+                                  id="qty-cart" 
+                                  value="1" 
+                                  readonly 
+                                  style="width: 70px;">
+                              <!-- Tombol + -->
+                              <button class="btn btn-outline-secondary btn-qty" data-type="plus" id="btn-plus">+</button>
+                          </div>
                         </div>
+                        {% load custom_tags %}
                         <div class="grid text-center mt-3">
                           <a href="{% url 'store:home' %}" class="btn btn-outline-dark">Home</a>
-                          <button type="button" value="{{products.id}}" class="btn btn-success" id="add-cart">
-                            Add to Cart
-                          </button>
+                          
+                          {% if user|has_group:"staff_admin" %}
+                            <button type="button" value="{{products.id}}" class="btn btn-danger" id="add-cart" disabled>
+                              X
+                            </button>
+                          {% else %}
+                              <button type="button" value="{{products.id}}" class="btn btn-success" id="add-cart">
+                                Add to Cart
+                              </button>
+                          {% endif %}
+                            
                         </div>
                 </div>
               </div>
@@ -42,32 +58,41 @@
     </div><br>
 
     <script>
-      // check if button pressed
+      // Quantity adjustment using + and -
+      $(document).on('click', '.btn-qty', function(e) {
+          e.preventDefault();
+          let type = $(this).data('type');
+          let input = $('#qty-cart');
+          let currentValue = parseInt(input.val());
+
+          // Adjust quantity value
+          if (type === 'plus') {
+              input.val(currentValue + 1);
+          } else if (type === 'minus' && currentValue > 1) {
+              input.val(currentValue - 1);
+          }
+      });
+
+      // Add to cart functionality
       $(document).on('click', '#add-cart', function(e){
         e.preventDefault();
         $.ajax({
           type: "POST",
           url: "{% url 'cart:cart_add' %}",
           data: {
-            product_id: $('#add-cart').val(),
-            product_qty: $('#qty-cart option:selected').text(),
+            product_id: $(this).val(),
+            product_qty: $('#qty-cart').val(),
             csrfmiddlewaretoken: "{{ csrf_token }}",
             action: "post"
           },
           success: function(json){
-            // console.log(json)
-            document.getElementById("cart_quantity")
-            .textContent = json.qty
-            location.reload()
+            document.getElementById("cart_quantity").textContent = json.qty;
+            location.reload();
           },
-          
           error: function(xhr, errmsg, err){
-            
+            console.error(errmsg); // Log error for debugging
           }
-
         });
-
       });
     </script>
 {% endblock contents %}
-    

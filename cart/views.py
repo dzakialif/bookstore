@@ -1,12 +1,17 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from .cart import Cart
 from store.models import Product
 from django.contrib import messages
 from django.http import JsonResponse
 
 # Create your views here.
+def is_staff_admin(user):
+    return user.groups.filter(name='staff_admin').exists()
 
 def cart_summary(request):
+    if is_staff_admin(request.user):  # Pengecekan grup
+        messages.error(request, "Staff Admin accounts cannot perform transactions.")
+        return redirect('store:home')
     # get the cart
     cart = Cart(request)
     cart_products = cart.get_prods
@@ -22,6 +27,9 @@ def cart_summary(request):
 
 
 def cart_add(request):
+    if is_staff_admin(request.user):  # Pengecekan grup
+        messages.error(request, "Staff Admin accounts cannot perform transactions.")
+        return redirect('store:home')
     # get the cart
     cart = Cart(request)
     # test for post

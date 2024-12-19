@@ -2,9 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from .models import (
     Category,
-    Customer,
     Product,
-    Order,
     Profile,
 )
 # Register your models here.
@@ -12,10 +10,7 @@ from .models import (
 class CategoryAdmin(admin.ModelAdmin):
     readonly_fields = ['slug']
     
-    
-admin.site.register(Customer)
 admin.site.register(Product)
-admin.site.register(Order)
 admin.site.register(Profile)
 
 # Mix profile info and user info

@@ -1,3 +1,4 @@
+{% load custom_tags %}
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container px-4 px-lg-5">
         <a class="navbar-brand" href="{% url 'store:home' %}">Edi Book Store</a>
@@ -21,7 +22,7 @@
                         </ul>
                     </li>
                     
-                    {% if user.is_superuser %}
+                    {% if user.is_superuser or user|has_group:"staff_admin" %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Order</a>
                             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
@@ -31,8 +32,15 @@
                                 <li>
                                     <a class="dropdown-item" href="{% url 'payment:not_shipped_dash' %}">Un-shipped Dashboard</a>
                                 </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'payment:payment_dashboard' %}">Payment Dashboard</a>
+                                </li>
 
                             </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'payment:order_history' %}">Order History</a>
                         </li>
                     {% endif %}
                         

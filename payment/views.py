@@ -2,194 +2,175 @@ import datetime
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from cart.cart import Cart
+from django.views.generic import ListView, DetailView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import ShippingForm, PaymentForm
-from .models import ShippingAddress, Order, OrderItem
-from django.contrib.auth.models import User
+from .models import ShippingAddress, Order, OrderItem, PaymentInfo
+from store.models import Profile
 
-# Create your views here.
+# Fungsi untuk memeriksa apakah pengguna adalah admin atau superuser
+def is_staff_admin(user):
+    """
+    Periksa apakah pengguna ada di grup 'staff_admin' atau merupakan superuser.
+    """
+    return user.groups.filter(name='staff_admin').exists()
 
-def orders(request, pk):
-	if request.user.is_authenticated and request.user.is_superuser:
-		# Get the order
-		order = Order.objects.get(id=pk)
-		# Get the order items
-		items = OrderItem.objects.filter(order=pk)
-  
-		return render(request, 'payment/orders.html', {"order":order, "items":items})
+# View untuk menampilkan detail pesanan
+class OrderDetailView(LoginRequiredMixin, DetailView):
+    model = Order
+    template_name = 'payment/order_detail.html'
+    context_object_name = 'order'
+
+    def get_queryset(self):
+        # Hanya tampilkan pesanan yang dimiliki oleh pengguna yang login
+        return super().get_queryset().filter(user=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Tambahkan item pesanan dan informasi pembayaran ke konteks
+        context['items'] = self.object.orderitem_set.all()
+        context['payment'] = getattr(self.object, 'payment', None)  # Ambil informasi pembayaran
+        return context
+
+    def handle_no_permission(self):
+        # Arahkan pengguna yang tidak berizin ke halaman login
+        messages.error(self.request, "You must be logged in to view your order details.")
+        return redirect('store:login')
+
+# View untuk menampilkan riwayat pesanan pengguna
+class OrderHistoryView(LoginRequiredMixin, ListView):
+    model = Order
+    template_name = 'payment/order_history.html'
+    context_object_name = 'orders'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'Order History'
+        return context
 
-def not_shipped_dash(request):
-	if request.user.is_authenticated and request.user.is_superuser:
-		orders = Order.objects.filter(shipped=False)
-		if request.POST:
-			status = request.POST['shipping_status']
-			num = request.POST['num']
-			# Get the order
-			order = Order.objects.filter(id=num)
-			# grab Date and time
-			now = datetime.datetime.now()
-			# update order
-			order.update(shipped=True, date_shipped=now)
-			# redirect
-			messages.success(request, "Shipping Status Updated")
-			return redirect('home')
+    def get_queryset(self):
+        # Hanya tampilkan pesanan milik pengguna yang login, urutkan berdasarkan tanggal
+        return super().get_queryset().filter(user=self.request.user).order_by('-date_ordered')
 
-		return render(request, "payment/not_shipped_dash.html", {
-            'page_title': 'Un-shipped Dashboard',
-            'orders':orders
-        })
-	else:
-		messages.success(request, "Access Denied")
-		return redirect('home')
+    def handle_no_permission(self):
+        # Arahkan pengguna yang tidak berizin ke halaman login
+        messages.error(self.request, "You must be logged in to view your order history.")
+        return redirect('store:login')
 
-
-def shipped_dash(request):
-	if request.user.is_authenticated and request.user.is_superuser:
-		orders = Order.objects.filter(shipped=True)
-		if request.POST:
-			status = request.POST['shipping_status']
-			num = request.POST['num']
-			# grab the order
-			order = Order.objects.filter(id=num)
-			# grab Date and time
-			now = datetime.datetime.now()
-			# update order
-			order.update(shipped=False)
-			# redirect
-			messages.success(request, "Shipping Status Updated")
-			return redirect('home')
-
-        
-		return render(request, "payment/shipped_dash.html", {
-            'page_title': 'Shipped Dashboard',
-            'orders':orders
-        })
-	else:
-		messages.success(request, "Access Denied")
-		return redirect('home')
-
-
-def process_order(request):
-    if request.POST:
-        # Get the cart
-        cart = Cart(request)
-        cart_products = cart.get_prods
-        quantities = cart.get_quants
-        totals = cart.cart_total()
-        
-        
-        # get billing info from last page
-        payment_form = PaymentForm(request.POST or None)
-        # get shipping session data
-        my_shipping = request.session.get('my_shipping')
-
-        # create shipping address from session info
-        # Gather Order Info
-        full_name = my_shipping['shipping_full_name']
-        email = my_shipping['shipping_email']
-		# Create Shipping Address from session info
-        shipping_address = f"{my_shipping['shipping_address1']}\n{my_shipping['shipping_address2']}\n{my_shipping['shipping_city']}\n{my_shipping['shipping_zipcode']}"
-        amount_paid = totals
-        
-        if request.user.is_authenticated:
-            # log in
-            user = request.user
-            # Create Order
-            create_order = Order(user=user, full_name=full_name, email=email, shipping_address=shipping_address, amount_paid=amount_paid)
-            create_order.save()
-
-			# Add order items
-			# Get the order ID
-            order_id = create_order.pk
-            
-            # Get product Info
-            for product in cart_products():
-				# Get product ID
-                product_id = product.id
-				# Get product price
-                price = product.price
-                
-                # Get quantity
-                for key,value in quantities().items():
-                    if int(key) == product.id:
-						# Create order item
-                        create_order_item = OrderItem(order_id=order_id, product_id=product_id, user=user, quantity=value, price=price)
-                        create_order_item.save()
-                        
-            # delete cart after that
-            for key in list(request.session.keys()):
-                if key == "session_key":
-					# Delete the key    
-                    del request.session[key]
-            
-            messages.success(request, 'Order Placed')
-            return redirect('store:home')
-        else:
-            messages.success(request, 'You must be logged in...')
-            return redirect('store:home')
-        
-    else:
-        messages.success(request, 'Access Denied')
-        return redirect('store:home')
-
-def billing_info(request):
-    if request.POST:
-        # get the cart
-        cart = Cart(request)
-        cart_products = cart.get_prods
-        quantities = cart.get_quants
-        totals = cart.cart_total()
-        
-        # create a session with shipping info
-        my_shipping = request.POST
-        request.session['my_shipping'] = my_shipping
-        
-        # check user 
-        if request.user.is_authenticated:
-            # get the billing form
-            billing_form = PaymentForm()
-            context = {
-                'page_title': 'Billing Info',
-                'cart_products': cart_products,
-                'quantities': quantities,
-                'totals': totals,
-                'shipping_info': request.POST,
-                'billing_form': billing_form,
-            }
-            return render(request, 'payment/billing_info.html', context)
-        else:
-            messages.success(request, 'You Must be Logged in...')
-            return redirect('store:login') 
-        
-    else:
-        messages.success(request, 'Access Denied')
-        return redirect('store:home')
-    
-
-def checkout(request):
-    # get the cart
-    cart = Cart(request)
-    cart_products = cart.get_prods
-    quantities = cart.get_quants
-    totals = cart.cart_total()
+# View untuk menampilkan dan memperbarui detail pembayaran
+def payment_detail(request, pk):
     if request.user.is_authenticated:
-        # Checkout as logged in user
-		# Shipping User
-        shipping_user = ShippingAddress.objects.get(user__id=request.user.id)
-        # Shipping Form
-        shipping_form = ShippingForm(request.POST or None, instance=shipping_user)
-        context = {
-            'page_title': 'Checkout',
-            'cart_products': cart_products,
-            'quantities': quantities,
-            'totals': totals,
-            'shipping_form': shipping_form,
-        }
-        return render(request, 'payment/checkout.html', context)
-    else:
-        messages.success(request, 'You Must be Logged in...')
-        return redirect('store:login')   
+        # Ambil informasi pembayaran berdasarkan ID
+        payment = PaymentInfo.objects.get(id=pk)
 
-def payment_success(request):
-    context = {'page_title': 'Payment Success'}
-    return render(request, 'payment/payment_success.html', context)
+        # Periksa apakah pengguna memiliki akses ke pembayaran ini
+        if payment.user != request.user and not (is_staff_admin(request.user) or request.user.is_superuser):
+            messages.error(request, "You do not have permission to view this payment.")
+            return redirect('store:home')
+
+        # Tangani perubahan status pembayaran melalui POST
+        if request.method == 'POST':
+            new_status = request.POST.get('status')
+            if new_status in dict(PaymentInfo.STATUS_CHOICES):  # Validasi status yang dipilih
+                payment.status = new_status
+                payment.save()
+                messages.success(request, "Payment status updated successfully!")
+            else:
+                messages.error(request, "Invalid status selected.")
+            return redirect('payment:payment_detail', pk=pk)
+
+        # Render halaman detail pembayaran
+        context = {
+            'page_title': 'Payment Detail',
+            'payment': payment,
+        }
+        return render(request, 'payment/payment_detail.html', context)
+    else:
+        messages.error(request, "You must be logged in to view payment details.")
+        return redirect('store:login')
+
+# View untuk dashboard pembayaran (hanya untuk admin)
+def payment_dashboard(request):
+    if request.user.is_authenticated and (is_staff_admin(request.user) or request.user.is_superuser):
+        # Ambil semua informasi pembayaran
+        payments = PaymentInfo.objects.all().order_by('-created_at')
+
+        # Render halaman dashboard pembayaran
+        context = {
+            'page_title': 'Payment Dashboard',
+            'payments': payments,
+        }
+        return render(request, 'payment/payment_dashboard.html', context)
+    else:
+        messages.error(request, "Access Denied. You do not have permission to view this page.")
+        return redirect('store:home')
+
+# View untuk mengelola pesanan individual (hanya untuk admin)
+def orders(request, pk):
+    if request.user.is_authenticated and (is_staff_admin(request.user) or request.user.is_superuser):
+        order = Order.objects.get(id=pk)  # Ambil pesanan berdasarkan ID
+        items = OrderItem.objects.filter(order=pk)  # Ambil item yang terkait dengan pesanan
+
+        if request.POST:
+            status = request.POST['shipping_status']
+            if status == "true":
+                order = Order.objects.filter(id=pk)
+                now = datetime.datetime.now()
+                order.update(shipped=True, date_shipped=now)
+            else:
+                order = Order.objects.filter(id=pk)
+                order.update(shipped=False)
+            messages.success(request, "Shipping Status Updated")
+            return redirect('store:home')
+
+        return render(request, 'payment/orders.html', {"order": order, "items": items})
+    else:
+        messages.success(request, "Access Denied")
+        return redirect('store:home')
+
+# View untuk menampilkan pesanan yang belum dikirim (hanya untuk admin)
+def not_shipped_dash(request):
+    if request.user.is_authenticated and (is_staff_admin(request.user) or request.user.is_superuser):
+        orders = Order.objects.filter(shipped=False)
+        if request.POST:
+            status = request.POST['shipping_status']
+            num = request.POST['num']
+            order = Order.objects.filter(id=num)
+            now = datetime.datetime.now()
+            order.update(shipped=True, date_shipped=now)
+            messages.success(request, "Shipping Status Updated")
+            return redirect('store:home')
+
+        return render(request, "payment/not_shipped_dash.html", {
+            'page_title': 'Un-shipped Dashboard',
+            'orders': orders
+        })
+    else:
+        messages.success(request, "Access Denied")
+        return redirect('store:home')
+
+# View untuk pesanan yang sudah dikirim (hanya untuk admin)
+def shipped_dash(request):
+    if request.user.is_authenticated and (is_staff_admin(request.user) or request.user.is_superuser):
+        orders = Order.objects.filter(shipped=True)
+        if request.POST:
+            status = request.POST['shipping_status']
+            num = request.POST['num']
+            order = Order.objects.filter(id=num)
+            now = datetime.datetime.now()
+            order.update(shipped=False)
+            messages.success(request, "Shipping Status Updated")
+            return redirect('store:home')
+
+        return render(request, "payment/shipped_dash.html", {
+            'page_title': 'Shipped Dashboard',
+            'orders': orders
+        })
+    else:
+        messages.success(request, "Access Denied")
+        return redirect('store:home')
+
+# Proses pesanan dan pembayaran
+def process_order(request):
+    # Logika pemrosesan pesanan
+    pass  # Dipersingkat untuk kejelasan

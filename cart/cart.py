@@ -3,142 +3,152 @@ from store.models import Product, Profile
 class Cart():
     def __init__(self, request):
         self.session = request.session
-        # get request
+        # Simpan request untuk digunakan di seluruh kelas
         self.request = request
         
-        # get the current session key if it exist
+        # Ambil session key saat ini jika sudah ada
         cart = self.session.get('session_key')
         
-        # if the user is new, no session key! create one
+        # Jika user baru, tidak ada session key, buat session key baru
         if 'session_key' not in request.session:
             cart = self.session['session_key'] = {}
             
-        # make sure cart is available on all pages of site
+        # Pastikan keranjang (cart) tersedia di seluruh halaman situs
         self.cart = cart
         
     def db_add(self, product, quantity):
+        """
+        Tambahkan produk ke keranjang (cart) di database untuk pengguna yang terautentikasi.
+        """
         product_id = str(product)
         product_qty = str(quantity)
-		# Logic
+        
+        # Jika produk sudah ada di keranjang, tidak melakukan apa-apa
         if product_id in self.cart:
             pass
         else:
-			#self.cart[product_id] = {'price': str(product.price)}
+            # Menambahkan produk ke keranjang dengan jumlah yang ditentukan
             self.cart[product_id] = int(product_qty)
             
+        # Tandai session sebagai dimodifikasi
         self.session.modified = True
 
-		# Deal with logged in user
+        # Jika pengguna login, simpan keranjang ke profil pengguna di database
         if self.request.user.is_authenticated:
-			# Get the current user profile
+            # Ambil profil pengguna saat ini
             current_user = Profile.objects.filter(user__id=self.request.user.id)
-			# Convert {'3':1, '2':4} to {"3":1, "2":4}
+            # Konversi dictionary Python menjadi string JSON
             carty = str(self.cart)
             carty = carty.replace("\'", "\"")
-			# Save carty to the Profile Model
+            # Simpan keranjang di profil pengguna
             current_user.update(old_cart=str(carty))
         
     def add(self, product, quantity):
+        """
+        Tambahkan produk ke keranjang (untuk sesi saat ini).
+        """
         product_id = str(product.id)
         product_qty = str(quantity)
         
-        # logic
+        # Jika produk sudah ada di keranjang, tidak melakukan apa-apa
         if product_id in self.cart:
             pass
         else:
-            # self.cart[product_id] = {'price': str(product.price)}
+            # Tambahkan produk ke keranjang
             self.cart[product_id] = int(product_qty)
             
+        # Tandai session sebagai dimodifikasi
         self.session.modified = True
         
-        # deal with logged in user
+        # Jika pengguna login, simpan keranjang ke profil pengguna
         if self.request.user.is_authenticated:
-            # get the current user profile
             current_user = Profile.objects.filter(user__id=self.request.user.id)
-            
             carty = str(self.cart)
             carty = carty.replace("\'", "\"")
-			# Save carty to the Profile Model
             current_user.update(old_cart=str(carty))
             
-            
-            
-            
-        
     def cart_total(self):
-        # get product ids
+        """
+        Hitung total harga semua produk di keranjang.
+        """
+        # Ambil ID produk dari keranjang
         product_ids = self.cart.keys()
-        # lookup those keys in our products db model
+        # Ambil produk dari database berdasarkan ID
         products = Product.objects.filter(id__in=product_ids)
-        # get quantities
+        # Ambil kuantitas produk
         quantities = self.cart
-        # start count at 0
+        # Inisialisasi total harga
         total = 0
         
         for key, value in quantities.items():
-            # convert key str to int
+            # Konversi ID dari string ke integer
             key = int(key)
             for product in products:
                 if product.id == key:
+                    # Hitung total harga untuk setiap produk
                     total = total + (product.price * value)
                     
         return total
-        
     
-        
     def __len__(self):
+        """
+        Hitung jumlah item di keranjang.
+        """
         return len(self.cart)
     
     def get_prods(self):
-        # get ids from cart
+        """
+        Ambil semua produk di keranjang berdasarkan ID.
+        """
         product_ids = self.cart.keys()
-        # use ids to lookup products in db model
         products = Product.objects.filter(id__in=product_ids)
-        
-        # return those looked up products
         return products
     
     def get_quants(self):
+        """
+        Ambil kuantitas setiap produk di keranjang.
+        """
         quantities = self.cart
         return quantities
     
     def update(self, product, quantity):
+        """
+        Perbarui jumlah produk di keranjang.
+        """
         product_id = str(product)
         product_qty = int(quantity)
         
         ourcart = self.cart
-        # update
+        # Perbarui jumlah produk di keranjang
         ourcart[product_id] = product_qty
         
+        # Tandai session sebagai dimodifikasi
         self.session.modified = True
         
-        # Deal with logged in user
+        # Jika pengguna login, simpan perubahan ke profil pengguna
         if self.request.user.is_authenticated:
-			# Get the current user profile
             current_user = Profile.objects.filter(user__id=self.request.user.id)
-			# Convert {'3':1, '2':4} to {"3":1, "2":4}
             carty = str(self.cart)
             carty = carty.replace("\'", "\"")
-			# Save carty to the Profile Model
             current_user.update(old_cart=str(carty))
         
-        thing = self.cart
-        return thing
+        return self.cart
     
     def delete(self, product):
+        """
+        Hapus produk dari keranjang.
+        """
         product_id = str(product)
-        # delete from dictionary/cart
+        # Hapus produk dari keranjang
         if product_id in self.cart:
             del self.cart[product_id]
             
+        # Tandai session sebagai dimodifikasi
         self.session.modified = True
         
-        # Deal with logged in user
+        # Jika pengguna login, simpan perubahan ke profil pengguna
         if self.request.user.is_authenticated:
-			# Get the current user profile
             current_user = Profile.objects.filter(user__id=self.request.user.id)
-			# Convert {'3':1, '2':4} to {"3":1, "2":4}
             carty = str(self.cart)
             carty = carty.replace("\'", "\"")
-            # Save carty to the Profile Model
             current_user.update(old_cart=str(carty))

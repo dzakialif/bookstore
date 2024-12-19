@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {{ page_title }}
+{% endblock page_title %}
+
+{% block contents %}
+<div class="container my-5">
+    <h1 class="mt-4">{{ page_title }}</h1>
+    <div class="card my-5">
+        <div class="card-header">
+            Order Information
+        </div>
+        <div class="card-body">
+            <p><strong>Order ID:</strong> {{ order.id }}</p>
+            <p><strong>Date:</strong> {{ order.date_ordered|date:"M d, Y H:i" }}</p>
+            {% load humanize %}
+            <p><strong>Total Amount:</strong> Rp. {{ order.amount_paid|intcomma }}</p>
+            <p><strong>Order Status:</strong>
+                {% if order.shipped %}
+                    <span class="badge bg-success">Shipped</span>
+                {% else %}
+                    <span class="badge bg-warning">Pending</span>
+                {% endif %}
+            </p>
+            <p><strong>Payment Status:</strong>
+                {% if payment %}
+                    {% if payment.status == 'completed' %}
+                        <span class="badge bg-success">Paid</span>
+                    {% elif payment.status == 'pending' %}
+                        <span class="badge bg-warning">Pending</span>
+                    {% else %}
+                        <span class="badge bg-danger">Failed</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-secondary">No Payment</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="card mt-4">
+        <div class="card-header">
+            Order Items
+        </div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ item.product.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>Rp. {{ item.price|intcomma }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock contents %}

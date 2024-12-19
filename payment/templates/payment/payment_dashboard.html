@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {{ page_title }}
+{% endblock page_title %}
+
+{% block contents %}
+    <div class="container my-5">
+        <div class="row">
+            <center>
+                <div class="col-md-8">
+                    <h1 class="mt-4">{{ page_title }}</h1>
+                    <table class="table table-striped mt-3">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Payment Id</th>
+                                <th>User</th>
+                                <th>Card Name</th>
+                                <th>Card Number</th>
+                                <th>CVV</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <a href="{% url 'payment:payment_detail' payment.id %}">{{ payment.id }}</a>
+                                    </td>
+                                    <td>{{ payment.user.username }}</td>
+                                    <td>{{ payment.card_name }}</td>
+                                    <td>{{ payment.card_number }}</td>
+                                    <td>{{ payment.card_cvv }}</td>
+                                    <td>{{ payment.created_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {% if payment.status == 'pending' %}
+                                            <span class="badge bg-warning">{{ payment.status|capfirst }}</span>
+                                        {% elif payment.status == 'completed' %}
+                                            <span class="badge bg-success">{{ payment.status|capfirst }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ payment.status|capfirst }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </center>
+        </div>
+    </div>
+    <br><br><br><br><br><br><br>
+{% endblock contents %}

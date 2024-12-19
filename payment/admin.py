@@ -1,10 +1,11 @@
 from django.contrib import admin
-from .models import ShippingAddress, Order, OrderItem
+from .models import ShippingAddress, Order, OrderItem, PaymentInfo
 
 # Register the model on the admin section thing
 admin.site.register(ShippingAddress)
 admin.site.register(Order)
 admin.site.register(OrderItem)
+admin.site.register(PaymentInfo)
 
 # Create an OrderItem Inline
 class OrderItemInline(admin.StackedInline):

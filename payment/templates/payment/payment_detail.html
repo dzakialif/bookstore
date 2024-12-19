@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block page_title %}
+    {{ page_title }}
+{% endblock page_title %}
+
+{% block contents %}
+<div class="container">
+    <h1 class="mt-4">{{ page_title }}</h1>
+    <div class="card mt-4">
+        <div class="card-header">
+            Payment Details
+        </div>
+        <div class="card-body">
+            <p><strong>Payment ID:</strong> {{ payment.id }}</p>
+            <p><strong>User:</strong> {{ payment.user.username }}</p>
+            <p><strong>Order ID:</strong> {{ payment.order.id }}</p>
+            <p><strong>Card Name:</strong> {{ payment.card_name }}</p>
+            <p><strong>Card Number:</strong> {{ payment.card_number }}</p>
+            <p><strong>CVV:</strong> {{ payment.card_cvv }}</p>
+            <p>
+                <strong>Status:</strong>
+                <form method="post">
+                    {% csrf_token %}
+                    <select name="status" class="form-select" style="width: auto; display: inline;">
+                        {% for value, label in payment.STATUS_CHOICES %}
+                            <option value="{{ value }}" {% if payment.status == value %}selected{% endif %}>
+                                {{ label|capfirst }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm mx-3">Update</button>
+                </form>
+            </p>
+            <p><strong>Created At:</strong> {{ payment.created_at|date:"M d, Y H:i" }}</p>
+        </div>
+    </div>
+    <a href="{% url 'payment:payment_dashboard' %}" class="btn btn-secondary my-5">Back to Dashboard</a>
+</div>
+{% endblock contents %}
