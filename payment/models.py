@@ -5,93 +5,90 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver 
 import datetime
 
-# Model untuk alamat pengiriman
+# Create your models here.
+
 class ShippingAddress(models.Model):
-    # Relasi dengan pengguna (ForeignKey)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    shipping_full_name = models.CharField(max_length=255)  # Nama lengkap untuk pengiriman
-    shipping_email = models.CharField(max_length=255)  # Email untuk pengiriman
-    shipping_address = models.TextField()  # Alamat lengkap
-    shipping_city = models.CharField(max_length=255)  # Kota
-    shipping_zipcode = models.CharField(max_length=255, null=True, blank=True)  # Kode pos (opsional)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+	shipping_full_name = models.CharField(max_length=255)
+	shipping_email = models.CharField(max_length=255)
+	shipping_address = models.TextField()
+	shipping_city = models.CharField(max_length=255)
+	shipping_zipcode = models.CharField(max_length=255, null=True, blank=True)
 
-    class Meta:
-        # Mencegah pluralisasi nama model di admin
-        verbose_name_plural = "Shipping Address"
 
-    def __str__(self):
-        # Representasi string dari objek alamat pengiriman
-        return f'Shipping Address - {str(self.user.id)}. {self.user.username}'
+	# Don't pluralize address
+	class Meta:
+		verbose_name_plural = "Shipping Address"
 
-# Fungsi untuk membuat alamat pengiriman default saat pengguna mendaftar
+	def __str__(self):
+		return f'Shipping Address - {str(self.user.id)}. {self.user.username}'
+
+	# Create a user Shipping Address by default when user signs up
 def create_shipping(sender, instance, created, **kwargs):
-    if created:  # Jika pengguna baru dibuat
-        user_shipping = ShippingAddress(user=instance)  # Buat alamat pengiriman default
-        user_shipping.save()  # Simpan ke database
+	if created:
+		user_shipping = ShippingAddress(user=instance)
+		user_shipping.save()
 
-# Menghubungkan sinyal post_save ke fungsi create_shipping
+# Automate the profile thing
 post_save.connect(create_shipping, sender=User)
 
 
-# Model untuk pesanan
+# create order model
 class Order(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # Relasi dengan pengguna
-    full_name = models.CharField(max_length=250)  # Nama lengkap untuk pesanan
-    email = models.EmailField(max_length=250)  # Email untuk pesanan
-    shipping_address = models.TextField()  # Alamat pengiriman
-    amount_paid = models.DecimalField(max_digits=7, decimal_places=0)  # Total pembayaran
-    date_ordered = models.DateTimeField(auto_now_add=True)  # Tanggal pesanan dibuat
-    shipped = models.BooleanField(default=False)  # Status pengiriman
-    date_shipped = models.DateTimeField(blank=True, null=True)  # Tanggal pengiriman selesai (opsional)
+	# Foreign Key
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+	full_name = models.CharField(max_length=250)
+	email = models.EmailField(max_length=250)
+	shipping_address = models.TextField()
+	amount_paid = models.DecimalField(max_digits=7, decimal_places=0)
+	date_ordered = models.DateTimeField(auto_now_add=True)	
+	shipped = models.BooleanField(default=False)
+	date_shipped = models.DateTimeField(blank=True, null=True)
+	
+	def __str__(self):
+		return f'Order - {str(self.id)}. {self.user}'
 
-    def __str__(self):
-        # Representasi string dari objek pesanan
-        return f'Order - {str(self.id)}. {self.user}'
-
-# Fungsi untuk mengatur tanggal pengiriman saat status pesanan diubah
+# Auto Add shipping Date
 @receiver(pre_save, sender=Order)
 def set_shipped_date_on_update(sender, instance, **kwargs):
-    if instance.pk:  # Jika objek sudah ada di database
-        now = datetime.datetime.now()
-        obj = sender._default_manager.get(pk=instance.pk)
-        # Jika status berubah menjadi terkirim, atur tanggal pengiriman
-        if instance.shipped and not obj.shipped:
-            instance.date_shipped = now
+	if instance.pk:
+		now = datetime.datetime.now()
+		obj = sender._default_manager.get(pk=instance.pk)
+		if instance.shipped and not obj.shipped:
+			instance.date_shipped = now
 
-
-# Model untuk item pesanan
+# create order item model
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True)  # Relasi dengan pesanan
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True)  # Relasi dengan produk
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # Relasi dengan pengguna
-    quantity = models.PositiveBigIntegerField(default=1)  # Kuantitas item
-    price = models.DecimalField(max_digits=7, decimal_places=0)  # Harga item
+	# Foreign Keys
+	order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True)
+	product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
 
-    def __str__(self):
-        # Representasi string dari objek item pesanan
-        return f'Order Item - {str(self.id)}. {self.user}'
+	quantity = models.PositiveBigIntegerField(default=1)
+	price = models.DecimalField(max_digits=7, decimal_places=0)
 
 
-# Model untuk informasi pembayaran
+	def __str__(self):
+		return f'Order Item - {str(self.id)}. {self.user}'
+
+
 class PaymentInfo(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),  # Menunggu pembayaran
-        ('completed', 'Completed'),  # Pembayaran selesai
-        ('failed', 'Failed'),  # Pembayaran gagal
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # Relasi dengan pengguna
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='payment')  # Relasi satu ke satu dengan pesanan
-    card_name = models.CharField(max_length=255)  # Nama pada kartu
-    card_number = models.CharField(max_length=16)  # Nomor kartu (16 digit)
-    card_cvv = models.CharField(max_length=4)  # CVV kartu (3 atau 4 digit)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')  # Status pembayaran
-    created_at = models.DateTimeField(auto_now_add=True)  # Tanggal pembuatan
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='payment')
+    card_name = models.CharField(max_length=255)
+    card_number = models.CharField(max_length=16)  # 16 digits for card number
+    card_cvv = models.CharField(max_length=4)  # CVV usually 3 or 4 digits
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Mencegah pluralisasi nama model di admin
         verbose_name_plural = "Payment Information"
 
     def __str__(self):
-        # Representasi string dari objek informasi pembayaran
         return f'PaymentInfo - {str(self.id)}. {self.user.username}'
